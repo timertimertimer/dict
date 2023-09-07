@@ -84,14 +84,12 @@ def select_n_random(n: int, lang: str = 'eng'):
 
 @execute_query
 def select_all_definitions(word: str, lang: str = 'eng'):
-    return f"""SELECT definition FROM {lang}_definitions WHERE id IN
-                (SELECT definition_id FROM {lang}_link WHERE word_id =
-                (SELECT id FROM {lang}_words WHERE word ilike '%' || $${word}$$ || '%'));"""
+    return select_all_query(lang) + f" WHERE word ILIKE $${word}$$ || '%';"
 
 
 @execute_query
 def _select_definition(word: str, lang: str = 'eng'):
-    return f"""SELECT definition FROM {lang}_definitions WHERE word ilike '%' || $${word}$$ || '%';"""
+    return f"""SELECT definition FROM {lang}_definitions WHERE word ILIKE $${word}$$ || '%';"""
 
 
 @execute_query

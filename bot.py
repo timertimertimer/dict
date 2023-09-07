@@ -208,8 +208,8 @@ async def process_lang(message: types.Message, state: FSMContext):
     elif command in ['/select', '/add', '/delete', help_cmd['select'], help_cmd['add'], help_cmd['delete']]:
         last_5_words = db.select_last_n_terms(5, lang)
         await message.answer("Введите слово", reply_markup=create_keyboard([el[0] for el in last_5_words]))
-        await States.INPUT_WORD.set()
         await state.update_data(lang=lang)
+        await States.INPUT_WORD.set()
         return
     else:  # quizzes
         if db.select_n_random(1, lang):
@@ -233,11 +233,8 @@ async def process_word(message: types.message, state: FSMContext):
     word = data.get('word') or message.text.lower()
     lang = data.get('lang')
     command = data.get('command')
-    definitions = db.select_all_definitions(word, lang)
-    if definitions:
-        s = word.upper() + '\n' + '\n'.join([f'{i + 1}. {definition[0]}' for i, definition in enumerate(definitions)])
-    else:
-        s = None
+    terms = db.select_all_definitions(word, lang)
+    s = prep_terms(terms) if terms else None
     if command in ['/select', help_cmd['select']]:
         if not s:
             await message.answer('Такого слова нет в словаре. Хотите добавить определение?',
@@ -352,7 +349,6 @@ async def handle_poll_answer(poll_answer: types.PollAnswer):
 async def process_skipped_letters(message: types.Message, state: FSMContext):
     global q
     data = await state.get_data()
-    print(message.text)
     q = quizzes[message.text](data.get('lang'))
     await message.answer(q.question, reply_markup=types.ReplyKeyboardRemove())
     await States.PROCESS_ANSWER.set()
