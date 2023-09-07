@@ -274,8 +274,8 @@ async def process_yes_or_no(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=States.INPUT_DEFINITION)
 async def process_definition(message: types.Message, state: FSMContext):
-    definition = message.text
     data = await state.get_data()
+    definition = data.get('definition') or message.text
     lang = data.get('lang')
     word = data.get('word')
     db.insert(word=word.lower(), definition=definition, lang=lang)
