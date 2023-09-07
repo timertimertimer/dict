@@ -133,3 +133,4 @@ test*
 .vscode
 .idea
 *.csv
+*.temp
