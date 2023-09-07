@@ -1,0 +1,4 @@
+psycopg2-binary
+loguru
+aiogram
+python-dotenv
