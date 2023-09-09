@@ -257,13 +257,14 @@ async def process_word(message: types.message, state: FSMContext):
         await state.update_data(word=word)
 
 
-@dp.message_handler(Text(equals=['да', 'нет', 'yes', 'no'], ignore_case=True), state=States.CHOOSE_OPTION)
+@dp.message_handler(Text(equals=['да', 'нет', 'yes', 'no', 'y', 'n', 'д', 'н'], ignore_case=True),
+                    state=States.CHOOSE_OPTION)
 async def process_yes_or_no(message: types.Message, state: FSMContext):
     option = message.text.lower()
-    if option in ['да', 'yes']:
+    if option in ['да', 'yes', 'д', 'y']:
         await state.update_data(command='/add')
         await process_word(message, state)
-    elif option in ['нет', 'no']:
+    elif option in ['нет', 'no', 'н', 'n']:
         await message.answer('Нет, так нет :(', reply_markup=keyboard)
         await state.finish()
 
