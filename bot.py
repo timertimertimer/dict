@@ -172,7 +172,7 @@ async def process_command(message: types.Message, state: FSMContext):
     await state.update_data(command=command)
     args = message.get_args()
     if args:
-        args = args.split(maxsplit=2)
+        args = args.split('|', maxsplit=2)
         lang, word = args[:2]
         if not await check_correct_lang(lang, message):
             return
