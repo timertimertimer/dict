@@ -13,7 +13,7 @@ from aiogram.dispatcher.filters import Text, Command
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 from loguru import logger
 
 from quiz import Quiz
@@ -78,8 +78,8 @@ def create_find_pairs_quiz(lang: str) -> Quiz:
     )
 
 
-config = dotenv_values('.env')
-API_TOKEN = os.getenv('DICT_API_TOKEN') or config['TG_API']
+load_dotenv()
+API_TOKEN = os.getenv('DICT_API_TOKEN')
 
 storage = MemoryStorage()
 bot = Bot(token=API_TOKEN)
