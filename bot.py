@@ -14,34 +14,39 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from dotenv import load_dotenv
 from loguru import logger
-
-from quiz import Quiz
+from models import *
 
 
 class States(StatesGroup):
     INPUT_LANG = State()
     INPUT_WORD = State()
     INPUT_DEFINITION = State()
+
     CHOOSE_OPTION = State()
+
     CHOOSE_QUIZ = State()
+    CHOOSE_NUMBER_OF_QUESTIONS = State()
     PROCESS_ANSWER = State()
 
 
-def create_correct_definition_quiz(lang: str) -> Quiz:
+def create_correct_definition_question(lang: str = 'eng') -> Question:
+    """Создание вопроса для викторины Правильный перевод"""
     words = db.select_n_random(4, lang)
     correct_option_id = random.randrange(0, 4)
-    options = [el[1][:100] for el in words]
-    question = words[correct_option_id][0]
-    return Quiz(
+    telegram_line_length_limit_in_poll = 100
+    options = [el[1][:telegram_line_length_limit_in_poll] for el in words]
+    question_string = words[correct_option_id][0]
+    return Question(
         type_='quiz',
         lang=lang,
-        question=question,
+        question=question_string,
         options=options,
         correct_option_id=correct_option_id
     )
 
 
-def create_skipped_letters_quiz(lang: str) -> Quiz:
+def create_skipped_letters_question(lang: str = 'eng') -> Question:
+    """Создание вопроса для викторины Пропуск букв"""
     res = db.select_n_random(1, lang)[0]
     word: str = res[0]
     definition: str = res[1]
@@ -49,17 +54,18 @@ def create_skipped_letters_quiz(lang: str) -> Quiz:
         k = random.randrange(len(word))
         if word[k] != ' ':
             break
-    question = word.upper()[:k] + '_' + word.upper()[k + 1:] + ' - ' + definition
+    question_string = word.upper()[:k] + '_' + word.upper()[k + 1:] + ' - ' + definition
     options = word[k]
-    return Quiz(
+    return Question(
         type_='skipped',
         lang=lang,
-        question=question,
+        question=question_string,
         options=options
     )
 
 
-def create_find_pairs_quiz(lang: str) -> Quiz:
+def create_find_pairs_question(lang: str = 'eng') -> Question:
+    """Создание вопроса для викторины Найти пары"""
     res = db.select_n_random(4, lang)
     words = [el[0] for el in res]
     definitions = [el[1] for el in res]
@@ -67,23 +73,31 @@ def create_find_pairs_quiz(lang: str) -> Quiz:
     options = []
     for i in range(len(words)):
         options.append(f'{i + 1}{chr(definitions.index(res[i][1]) + 97)}')
-    question = '\n'.join([f'{i + 1}. {words[i].upper()}' for i in range(len(words))]) + '\n\n' + '\n'.join(
+    question_string = '\n'.join([f'{i + 1}. {words[i].upper()}' for i in range(len(words))]) + '\n\n' + '\n'.join(
         [f'{chr(i + 97)}. {definitions[i]}' for i in range(len(words))])
-    return Quiz(
+    return Question(
         type_='pairs',
         lang=lang,
-        question=question,
+        question=question_string,
         options=options
     )
 
 
+quizzes = {
+    'Правильный перевод': create_correct_definition_question,
+    'Пропуск букв': create_skipped_letters_question,
+    'Найти пары': create_find_pairs_question
+}
+question_count = 0
+correct_count = 0
+number_of_questions = 5
+question = Question()
+
 load_dotenv()
 API_TOKEN = os.getenv('DICT_API_TOKEN')
-
 storage = MemoryStorage()
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot, storage=storage)
-
 help_cmd = {
     'random_5': '5 случайных слов из словаря',
     'select': 'Получить перевод/определение слова из словаря',
@@ -96,20 +110,6 @@ csv_description = 'Для добавление слов через отправ�
                   'Например: eng.csv, ru.csv\nТакже слова в файле должны соответствовать шаблону: "слово, перевод" ' \
                   'Например: book, бронировать'
 langs = ['eng', 'ru']
-quizzes = {
-    'Правильный перевод': create_correct_definition_quiz,
-    'Пропуск букв': create_skipped_letters_quiz,
-    'Найти пары': create_find_pairs_quiz
-}
-q = Quiz(
-    type_='quiz',
-    lang='',
-    question='',
-    options=[],
-    correct_option_id=int()
-)
-quiz_count = 0
-correct_count = 0
 
 
 def create_keyboard(legends: list) -> types.ReplyKeyboardMarkup:
@@ -117,6 +117,9 @@ def create_keyboard(legends: list) -> types.ReplyKeyboardMarkup:
     for el in legends:
         k.add(types.KeyboardButton(el))
     return k
+
+
+keyboard = create_keyboard(list(help_cmd.values()))
 
 
 def prep_terms(terms: list) -> str:
@@ -141,9 +144,6 @@ async def check_correct_lang(lang: str, message: types.Message) -> bool:
     return True
 
 
-keyboard = create_keyboard(list(help_cmd.values()))
-
-
 @dp.message_handler(Text(equals='Старт', ignore_case=True))
 @dp.message_handler(commands=['start', 'help'])
 async def description(message: types.message):
@@ -164,8 +164,8 @@ async def cancel(message: types.message, state: FSMContext):
     await message.reply('Cancelled.', reply_markup=keyboard)
 
 
-@dp.message_handler(Text(equals=help_cmd.values(), ignore_case=True)
-                    | Command(commands=help_cmd.keys(), ignore_case=True))
+@dp.message_handler(Text(equals=help_cmd.values(), ignore_case=True) |
+                    Command(commands=help_cmd.keys(), ignore_case=True))
 async def process_command(message: types.Message, state: FSMContext):
     command = message.get_command() or message.text
     await state.update_data(command=command)
@@ -211,7 +211,7 @@ async def process_lang(message: types.Message, state: FSMContext):
         return
     else:  # quizzes
         if db.select_n_random(1, lang):
-            await message.answer('Выберите викторину', reply_markup=create_keyboard(list(quizzes.keys())))
+            await message.answer('Выберите викторину', reply_markup=create_keyboard(quizzes))
             await States.CHOOSE_QUIZ.set()
         else:
             await message.answer("Словарь пуст :(", reply_markup=keyboard)
@@ -303,89 +303,90 @@ async def get_csv(message: types.Message):
     await message.answer(s, reply_markup=keyboard)
 
 
-@dp.message_handler(Text(equals='Правильный перевод'), state=States.CHOOSE_QUIZ)
-async def process_correct_definition(message: types.Message, state: FSMContext):
-    global q
+@dp.message_handler(Text(equals=quizzes), state=States.CHOOSE_QUIZ)
+async def process_quiz_type(message: types.Message, state: FSMContext):
+    quiz_type = message.text
+    await state.update_data(quiz_type=quiz_type)
+    await message.answer('Количество вопросов? Введите число', reply_markup=types.ReplyKeyboardRemove())
+    await States.CHOOSE_NUMBER_OF_QUESTIONS.set()
+
+
+@dp.message_handler(regexp=r'\d+', state=States.CHOOSE_NUMBER_OF_QUESTIONS)
+async def process_number_of_questions(message: types.Message, state: FSMContext):
+    global number_of_questions, question
+    number_of_questions = int(message.text)
+    print(number_of_questions)
     data = await state.get_data()
-    await state.finish()
     lang = data.get('lang')
-    q = create_correct_definition_quiz(lang)
-    await message.answer_poll(
-        question=q.question,
-        options=q.options,
-        type=q.type_,
-        correct_option_id=q.correct_option_id,
-        is_anonymous=False,
-        reply_markup=types.ReplyKeyboardRemove()
-    )
+    quiz_type = data.get('quiz_type')
+    question = quizzes[quiz_type](lang)
+    if quiz_type == 'Правильный перевод':
+        await state.finish()
+        await message.answer_poll(
+            question='1. ' + question.question,
+            options=question.options,
+            type=question.type_,
+            correct_option_id=question.correct_option_id,
+            is_anonymous=False,
+            reply_markup=types.ReplyKeyboardRemove()
+        )
+    else:
+        await message.answer(question.question, reply_markup=types.ReplyKeyboardRemove())
+        await States.PROCESS_ANSWER.set()
 
 
 @dp.poll_answer_handler()
 async def handle_poll_answer(poll_answer: types.PollAnswer):
-    global quiz_count, q, correct_count
-    quiz_count += 1
-    if poll_answer.option_ids[0] == q.correct_option_id:
+    global question_count, correct_count, question
+    question_count += 1
+    if poll_answer.option_ids[0] == question.correct_option_id:
         correct_count += 1
-    await bot.send_message(poll_answer.user.id, q.question.upper() + ' - ' + q.options[q.correct_option_id])
-    if quiz_count != 5:
-        q = create_correct_definition_quiz(q.lang)
+    await bot.send_message(poll_answer.user.id, question.question.upper() + ' - ' +
+                           question.options[question.correct_option_id])
+    if question_count != number_of_questions:
+        question = create_correct_definition_question(question.lang)
         await bot.send_poll(
             chat_id=poll_answer.user.id,
-            question=q.question,
-            options=q.options,
-            type=q.type_,
-            correct_option_id=q.correct_option_id,
+            question=f'{question_count + 1}. ' + question.question,
+            options=question.options,
+            type=question.type_,
+            correct_option_id=question.correct_option_id,
             is_anonymous=False
         )
     else:
-        await bot.send_message(poll_answer.user.id, f'Тестирование завершено. {correct_count}/{quiz_count}',
+        await bot.send_message(poll_answer.user.id, f'Тестирование завершено. {correct_count}/{question_count}',
                                reply_markup=keyboard)
-        quiz_count = 0
+        question_count = 0
         correct_count = 0
-
-
-@dp.message_handler(Text(equals=['Пропуск букв', 'Найти пары']), state=States.CHOOSE_QUIZ)
-async def process_skipped_letters(message: types.Message, state: FSMContext):
-    global q
-    data = await state.get_data()
-    q = quizzes[message.text](data.get('lang'))
-    await message.answer(q.question, reply_markup=types.ReplyKeyboardRemove())
-    await States.PROCESS_ANSWER.set()
 
 
 @dp.message_handler(state=States.PROCESS_ANSWER)
 async def process_answer(message: types.Message, state: FSMContext):
-    global q, correct_count, quiz_count
-    quiz_count += 1
+    global correct_count, question_count, question
+    question_count += 1
     answer = message.text.lower()
-    if q.type_ == 'skipped':
-        if answer == q.options:
+    if question.type_ == 'skipped':
+        if answer == question.options:
             await message.answer('+1')
             correct_count += 1
         else:
-            await message.answer(f':( ответ: {q.options}')
-        q = create_skipped_letters_quiz(q.lang)
-    elif q.type_ == 'pairs':
-        if answer.split() == q.options:
+            await message.answer(f':( ответ: {question.options}')
+    elif question.type_ == 'pairs':
+        if answer.split() == question.options:
             await message.answer('+1')
             correct_count += 1
         else:
-            await message.answer(f':( ответ: {" ".join(q.options)}')
-
-        q = create_find_pairs_quiz(q.lang)
-    if quiz_count == 5:
-        await message.answer(f'Тестирование завершено. {correct_count}/{quiz_count}',
-                             reply_markup=keyboard)
+            await message.answer(f':( ответ: {" ".join(question.options)}')
+    if question_count == number_of_questions:
+        await message.answer(f'Тестирование завершено. {correct_count}/{question_count}', reply_markup=keyboard)
         correct_count = 0
-        quiz_count = 0
+        question_count = 0
         await state.finish()
     else:
-        await message.answer(q.question, reply_markup=types.ReplyKeyboardRemove())
+        question = quizzes[(await state.get_data())['quiz_type']](question.lang)
+        await message.answer(question.question, reply_markup=types.ReplyKeyboardRemove())
 
 
 if __name__ == '__main__':
-    try:
-        db.select_n_random(1, 'eng')
-    except sqlite3.OperationalError:
-        db._init_db()
+    db.select_n_random(1, 'eng')
     executor.start_polling(dp, skip_updates=True)
