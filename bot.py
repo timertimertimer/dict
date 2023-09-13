@@ -1,6 +1,5 @@
 import os
 import random
-import sqlite3
 import re
 
 import db.db as db
