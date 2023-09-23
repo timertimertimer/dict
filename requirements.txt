@@ -1,4 +1,4 @@
 psycopg2-binary
 loguru
-aiogram
+aiogram==2.25.1
 python-dotenv
