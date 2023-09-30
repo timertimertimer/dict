@@ -1,3 +1,5 @@
+# TODO: add tests and edit project structure
+
 import os
 import random
 import re
@@ -271,10 +273,12 @@ async def process_yes_or_no(message: types.Message, state: FSMContext):
 @dp.message_handler(state=States.INPUT_DEFINITION)
 async def process_definition(message: types.Message, state: FSMContext):
     data = await state.get_data()
-    definition = data.get('definition') or message.text
     lang = data.get('lang')
     word = data.get('word')
-    db.insert(word=word.lower(), definition=definition, lang=lang)
+    definition = data.get('definition') or message.text
+    if '|' in definition:
+        for el in definition.split('|'):
+            db.insert(word=word.lower(), definition=el, lang=lang)
     await state.finish()
     await message.reply("Добавлено\n" + f'{word.upper()} - {definition} ', reply_markup=keyboard)
 
