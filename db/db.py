@@ -1,23 +1,9 @@
 import os
 import psycopg2
 from loguru import logger
-from configparser import ConfigParser
+from dotenv import load_dotenv
 
-
-def config(filename: str = 'database.ini', section: str = 'postgresql') -> dict:
-    parser = ConfigParser()
-    parser.read(filename)
-    db = {}
-    if section in parser:
-        for key in parser[section]:
-            db[key] = parser[section][key]
-    else:
-        raise Exception(
-            'Section {0} not found in the {1} file'.format(section, filename))
-    return db
-
-
-db_config = config()
+load_dotenv()
 
 
 def execute_query(func):
@@ -27,12 +13,12 @@ def execute_query(func):
         if isinstance(queries, str):
             queries = [queries]
         try:
-            with psycopg2.connect(dbname=db_config['database'],
-                                  user=db_config['username'],
-                                  password=db_config['password'],
-                                  host=db_config['hostname'],
-                                  port=db_config['port'],
-                                  sslmode='require') as connection:
+            with psycopg2.connect(dbname=os.getenv('POSTGRES_DB'),
+                                  user=os.getenv('POSTGRES_USER'),
+                                  password=os.getenv('POSTGRES_PASSWORD'),
+                                  host=os.getenv('POSTGRES_HOST'),
+                                  port=os.getenv('POSTGRES_PORT'),
+                                  sslmode='allow') as connection:
                 with connection.cursor() as cursor:
                     for query in queries:
                         try:
