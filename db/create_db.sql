@@ -1,11 +1,11 @@
 CREATE TABLE IF NOT EXISTS eng_words (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     word VARCHAR(50) NOT NULL,
     UNIQUE (word)
 );
 
 CREATE TABLE IF NOT EXISTS eng_definitions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     definition VARCHAR(255) NOT NULL,
     UNIQUE (definition)
 );
@@ -20,13 +20,13 @@ CREATE TABLE IF NOT EXISTS eng_link (
 
 
 CREATE TABLE IF NOT EXISTS ru_words (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     word VARCHAR(50) NOT NULL,
     UNIQUE (word)
 );
 
 CREATE TABLE IF NOT EXISTS ru_definitions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     definition VARCHAR(255) NOT NULL,
     UNIQUE (definition)
 );
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS ru_link (
     UNIQUE (word_id, definition_id)
 );
 
-insert into eng_words(word) values('book');
+INSERT INTO eng_words(word) VALUES('book');
 INSERT INTO eng_definitions (definition)
 VALUES
   ('книга'),
