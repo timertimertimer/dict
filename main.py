@@ -56,7 +56,8 @@ def create_skipped_letters_question(lang: str = 'eng') -> Question:
         k = random.randrange(len(word))
         if word[k] != ' ':
             break
-    question_string = word.upper()[:k] + '_' + word.upper()[k + 1:] + ' - ' + definition
+    question_string = word.upper()[:k] + '_' + \
+        word.upper()[k + 1:] + ' - ' + definition
     options = word[k]
     return Question(
         type_='skipped',
@@ -132,7 +133,7 @@ def prep_terms(terms: list) -> str:
         else:
             d[el[0]].append(el[1])
     return "\n".join(
-        [word.upper() + ' - ' + '; '.join([f'{i + 1}. {defi[i]}' for i in range(len(defi))]) if len(
+        [word.upper() + ' - ' + '. '.join([f'{i + 1}. {defi[i]}' for i in range(len(defi))]) if len(
             defi) > 1 else word.upper() + ' - ' + defi[0] for word, defi in
          d.items()])
 
@@ -149,7 +150,8 @@ async def check_correct_lang(lang: str, message: types.Message) -> bool:
 @dp.message_handler(Text(equals='Старт', ignore_case=True))
 @dp.message_handler(commands=['start', 'help'])
 async def description(message: types.message):
-    s = '\n'.join(['/' + cmd + ' - ' + legend for cmd, legend in help_cmd.items()])
+    s = '\n'.join(['/' + cmd + ' - ' + legend for cmd,
+                  legend in help_cmd.items()])
     await message.answer(s, reply_markup=keyboard)
     await message.answer(csv_description)
 
@@ -202,9 +204,11 @@ async def process_lang(message: types.Message, state: FSMContext):
     data = await state.get_data()
     command = data.get('command')
     if re.match(r'^\/select_\d+', command) or command == help_cmd['select_5']:
-        words = db.select_last_n_terms(int(re.search(r'\d+', command).group()), lang)
+        words = db.select_last_n_terms(
+            int(re.search(r'\d+', command).group()), lang)
     elif re.match(r'^\/random_\d+', command) or command == help_cmd['random_5']:
-        words = db.select_n_random(int(re.search(r'\d+', command).group()), lang)
+        words = db.select_n_random(
+            int(re.search(r'\d+', command).group()), lang)
     elif command in ['/select', '/add', '/delete', help_cmd['select'], help_cmd['add'], help_cmd['delete']]:
         last_5_words = db.select_last_n_terms(5, lang)
         await message.answer("Введите слово", reply_markup=create_keyboard([el[0] for el in last_5_words]))
@@ -277,10 +281,12 @@ async def process_definition(message: types.Message, state: FSMContext):
     word = data.get('word')
     definition = data.get('definition') or message.text
     if '|' in definition:
-        for el in definition.split('|'):
-            db.insert(word=word.lower(), definition=el, lang=lang)
+        (db.insert(word=word.lower(), definition=el, lang=lang)
+         for el in definition.split('|'))
+    else:
+        db.insert(word=word.lower(), definition=definition, lang=lang)
     await state.finish()
-    await message.reply("Добавлено\n" + f'{word.upper()} - {definition} ', reply_markup=keyboard)
+    await message.reply("Добавлено\n" + f'{word.upper()} - {definition}', reply_markup=keyboard)
 
 
 @dp.message_handler(content_types=['document'])

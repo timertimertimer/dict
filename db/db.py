@@ -12,27 +12,25 @@ def execute_query(func):
         logger.info(queries)
         if isinstance(queries, str):
             queries = [queries]
-        try:
-            with psycopg2.connect(dbname=os.getenv('POSTGRES_DB'),
-                                  user=os.getenv('POSTGRES_USER'),
-                                  password=os.getenv('POSTGRES_PASSWORD'),
-                                  host=os.getenv('POSTGRES_HOST'),
-                                  port=os.getenv('POSTGRES_PORT'),
-                                  sslmode='allow') as connection:
-                with connection.cursor() as cursor:
-                    for query in queries:
-                        try:
-                            cursor.execute(query)
-                        except psycopg2.Error as e:
-                            logger.debug(f'Query: {query}. Error message - {e}')
-                        connection.commit()
-                    if any([el in str(cursor.query) for el in ['INSERT INTO', 'DELETE FROM']]):
-                        results = True
-                    else:
-                        results = cursor.fetchall()
-                    logger.info(results)
-        except psycopg2.OperationalError as e:
-            logger.error(e)
+        with psycopg2.connect(dbname=os.getenv('POSTGRES_DB'),
+                              user=os.getenv('POSTGRES_USER'),
+                              password=os.getenv('POSTGRES_PASSWORD'),
+                              host=os.getenv('POSTGRES_HOST'),
+                              port=os.getenv('POSTGRES_PORT'),
+                              sslmode='allow') as connection:
+            with connection.cursor() as cursor:
+                for query in queries:
+                    try:
+                        cursor.execute(query)
+                    except psycopg2.Error as e:
+                        logger.debug(
+                            f'Query: {query}. Error message - {e}')
+                    connection.commit()
+                if any([el in str(cursor.query) for el in ['INSERT INTO', 'DELETE FROM']]):
+                    results = True
+                else:
+                    results = cursor.fetchall()
+                logger.info(results)
         return results
 
     return wrapper
@@ -53,33 +51,33 @@ def select_all_query(lang: str = 'eng') -> str:
 
 
 @execute_query
-def select_all(lang: str = 'eng'):
+def select_all(lang: str = 'eng') -> str:
     return select_all_query(lang) + f'ORDER BY {lang}_words.word'
 
 
 @execute_query
-def select_last_n_terms(n: int, lang: str = 'eng'):
+def select_last_n_terms(n: int, lang: str = 'eng') -> str:
     return select_all_query(lang) + f' ORDER BY {lang}_words.id DESC LIMIT {n}'
 
 
 @execute_query
-def select_n_random(n: int, lang: str = 'eng'):
+def select_n_random(n: int, lang: str = 'eng') -> str:
     query = select_all_query(lang) + f' ORDER BY RANDOM() LIMIT {n};'
     return query
 
 
 @execute_query
-def select_all_definitions(word: str, lang: str = 'eng'):
+def select_all_definitions(word: str, lang: str = 'eng') -> str:
     return select_all_query(lang) + f" WHERE word ILIKE $${word}$$ || '%';"
 
 
 @execute_query
-def _select_definition(word: str, lang: str = 'eng'):
+def _select_definition(word: str, lang: str = 'eng') -> str:
     return f"""SELECT definition FROM {lang}_definitions WHERE word ILIKE $${word}$$ || '%';"""
 
 
 @execute_query
-def insert(word, definition, lang: str = 'eng'):
+def insert(word: str, definition: str, lang: str = 'eng') -> list[str]:
     logger.info(
         f'Inserting {word.upper()} - {definition} ({lang}) to {lang}_words, {lang}_definitions, {lang}_link')
     return [
@@ -92,7 +90,7 @@ def insert(word, definition, lang: str = 'eng'):
 
 
 @execute_query
-def delete(word: str, lang: str = 'eng'):
+def delete(word: str, lang: str = 'eng') -> list[str]:
     logger.info(f'Deleting {word.upper()} ({lang}) ')
     return [
         f"""DELETE FROM {lang}_definitions WHERE id=
