@@ -18,6 +18,8 @@ from dotenv import load_dotenv
 from loguru import logger
 from models import *
 
+from googletrans import Translator
+
 
 class States(StatesGroup):
     INPUT_LANG = State()
@@ -113,6 +115,7 @@ csv_description = 'Для добавление слов через отправ�
                   'Например: eng.csv, ru.csv\nТакже слова в файле должны соответствовать шаблону: "слово, перевод" ' \
                   'Например: book, бронировать'
 langs = ['eng', 'ru']
+translator = Translator()
 
 
 def create_keyboard(legends: list) -> types.ReplyKeyboardMarkup:
@@ -306,7 +309,11 @@ async def get_csv(message: types.Message):
         with open(file_name, 'r', encoding='utf-8') as file:
             csv_file = csv.reader(file, delimiter=',')
             for row in csv_file:
-                db.insert(row[0].lower(), row[1], lang)
+                word = row[0].lower()
+                if len(row) == 1:
+                    db.insert(word, translator.translate(word, dest='ru'), lang)
+                elif len(row) == 2:
+                    db.insert(word, row[1], lang)
         s = 'Слова успешно добавлены'
     else:
         s = 'Бот принимает только файлы формата CSV'

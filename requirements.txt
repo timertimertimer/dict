@@ -2,3 +2,4 @@ psycopg2-binary
 loguru
 aiogram==2.25.1
 python-dotenv
+googletrans==4.0.0rc1
