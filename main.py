@@ -57,7 +57,7 @@ def create_skipped_letters_question(lang: str = 'eng') -> Question:
         if word[k] != ' ':
             break
     question_string = word.upper()[:k] + '_' + \
-        word.upper()[k + 1:] + ' - ' + definition
+                      word.upper()[k + 1:] + ' - ' + definition
     options = word[k]
     return Question(
         type_='skipped',
@@ -151,7 +151,7 @@ async def check_correct_lang(lang: str, message: types.Message) -> bool:
 @dp.message_handler(commands=['start', 'help'])
 async def description(message: types.message):
     s = '\n'.join(['/' + cmd + ' - ' + legend for cmd,
-                  legend in help_cmd.items()])
+    legend in help_cmd.items()])
     await message.answer(s, reply_markup=keyboard)
     await message.answer(csv_description)
 
@@ -281,8 +281,8 @@ async def process_definition(message: types.Message, state: FSMContext):
     word = data.get('word')
     definition = data.get('definition') or message.text
     if '|' in definition:
-        (db.insert(word=word.lower(), definition=el, lang=lang)
-         for el in definition.split('|'))
+        for el in definition.split('|'):
+            db.insert(word=word.lower(), definition=el, lang=lang)
     else:
         db.insert(word=word.lower(), definition=definition, lang=lang)
     await state.finish()
