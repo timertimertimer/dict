@@ -3,6 +3,7 @@ version: "3"
 services:
   postgres:
     image: postgres:latest
+    container_name: postgres
     hostname: postgres
     restart: always
     env_file:
@@ -15,6 +16,8 @@ services:
 
   dict:
     build: .
+    image: dict
+    container_name: dict
     command: sh -c "python main.py"
     env_file:
       - .env
